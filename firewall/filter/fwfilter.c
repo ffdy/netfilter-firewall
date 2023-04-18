@@ -7,14 +7,14 @@
 #include <linux/netfilter_ipv4.h>
 #include "fwfilter.h"
 
-//ºÍÊı¾İ°ü´¦ÀíÓĞ¹Ø¹³×Ó 
+//å’Œæ•°æ®åŒ…å¤„ç†æœ‰å…³é’©å­ 
 static struct nf_hook_ops nfhoLocalIn;
 static struct nf_hook_ops nfhoLocalOut;
 static struct nf_hook_ops nfhoPreRouting;
 static struct nf_hook_ops nfhoForwarding;
 static struct nf_hook_ops nfhoPostRouting;
 
-//´¦ÀíÓ¦ÓÃÍ¨ĞÅ¹³×Ó 
+//å¤„ç†åº”ç”¨é€šä¿¡é’©å­ 
 static struct nf_sockopt_ops nfhoSockopt;
 
 ban_status rules, recv;
@@ -27,41 +27,39 @@ unsigned int hookLocalIn(void* priv, struct sk_buff* skb, const struct nf_hook_s
 	unsigned short port = ntohs(rules.ban_port);
 	
 	//ban ping
-	//Èç¹ûÊı¾İ°üÊÇicmp²¢ÇÒrules.ping_statusÎª1Ôò¶ªÆúÊı¾İ°ü 
+	//å¦‚æœæ•°æ®åŒ…æ˜¯icmpå¹¶ä¸”rules.ping_statusä¸º1åˆ™ä¸¢å¼ƒæ•°æ®åŒ… 
 	if(iph->protocol == IPPROTO_ICMP && rules.ping_status == 1){
 		return NF_DROP;
 	}
 	
 	//ban port
-	//rules.port_statusÎª1²¢ÇÒÔ´¶Ë¿Ú·ûºÏ£¬¶ªÆú¸Ã¶Ë¿Úudp»òtcpµÄÊı¾İ°ü 
+	//rules.port_statusä¸º1å¹¶ä¸”æºç«¯å£ç¬¦åˆï¼Œä¸¢å¼ƒè¯¥ç«¯å£udpæˆ–tcpçš„æ•°æ®åŒ… 
 	if(rules.port_status == 1){
-		switch(iph->protocol){          //Ñ¡ÔñĞ­ÒéÀàĞÍ 
+		switch(iph->protocol){          //é€‰æ‹©åè®®ç±»å‹ 
 			case IPPROTO_TCP:
-				tcph = tcp_hdr(skb);    //»ñµÃtcpÍ· 
-				if(tcph->dest == port){
+				tcph = tcp_hdr(skb);    //è·å¾—tcpå¤´ 
+				if(tcph->dest == port)
 					return NF_DROP;
-					break;
-				}
+				break;
 			case IPPROTO_UDP:
-				udph = udp_hdr(skb);    //»ñµÃudpÍ· 
-				if(udph->dest == port){
+				udph = udp_hdr(skb);    //è·å¾—udpå¤´ 
+				if(udph->dest == port)
 					return NF_DROP;
-					break;
-				}
+				break;
 		}
 	}
 
 	//ban ip
-	//rules.ip_statusÎª1²¢ÇÒÔ´ipµØÖ··ûºÏ£¬¶ªÆú¸ÃÔ´ip·¢ËÍµÄÊı¾İ°ü 
+	//rules.ip_statusä¸º1å¹¶ä¸”æºipåœ°å€ç¬¦åˆï¼Œä¸¢å¼ƒè¯¥æºipå‘é€çš„æ•°æ®åŒ… 
 	if (rules.ip_status == 1){
 		if (rules.ban_ip == iph->saddr){  
 			return NF_DROP;
 		}
 	}
-	//ÒÔÉÏÇé¿ö¶¼²»·ûºÏ½ÓÊÕÊı¾İ°ü 
+	//ä»¥ä¸Šæƒ…å†µéƒ½ä¸ç¬¦åˆæ¥æ”¶æ•°æ®åŒ… 
 	return NF_ACCEPT;
 }
-//ÆäËûº¯Êı½ÓÊÕÊı¾İ°ü²¢´òÓ¡ĞÅÏ¢ 
+//å…¶ä»–å‡½æ•°æ¥æ”¶æ•°æ®åŒ…å¹¶æ‰“å°ä¿¡æ¯ 
 unsigned int hookLocalOut(void* priv, struct sk_buff* skb, const struct nf_hook_state* state)
 {
 	printk("hookLocalOut");
@@ -83,22 +81,22 @@ unsigned int hookForwarding(void* priv, struct sk_buff* skb, const struct nf_hoo
 	return NF_ACCEPT;
 }
 
-int hookSockoptSet(struct sock* sock, int cmd, void __user* user, unsigned int len)
+int hookSockoptSet(struct sock* sock, int cmd, sockptr_t arg, unsigned int len)
 {
 	int ret;
 	printk("hookSockoptSet");
-	//´ÓÓÃ»§¿Õ¼ä¸´ÖÆÊı¾İ 
-	ret = copy_from_user(&recv, user, sizeof(recv));
-	//ÃüÁîÀàĞÍ 
+	//ä»ç”¨æˆ·ç©ºé—´å¤åˆ¶æ•°æ® 
+	ret = copy_from_user(&recv, arg.user, sizeof(recv));
+	//å‘½ä»¤ç±»å‹ 
 	switch(cmd){
-		case BANPING:  //½ûÖ¹ping 
+		case BANPING:  //ç¦æ­¢ping 
 			rules.ping_status = recv.ping_status;
 			break;
-		case BANIP:    //½ûÖ¹ip 
+		case BANIP:    //ç¦æ­¢ip 
 			rules.ip_status = recv.ip_status;
 			rules.ban_ip = recv.ban_ip;
 			break;
-		case BANPORT:  //½ûÖ¹¶Ë¿Ú 
+		case BANPORT:  //ç¦æ­¢ç«¯å£ 
 			rules.port_status = recv.port_status;
 			rules.ban_port = recv.ban_port;
 			break;
@@ -119,7 +117,7 @@ int hookSockoptGet(struct sock* sock, int cmd, void __user* user, int* len)
 	int ret;
 	
 	printk("hookSockoptGet");
-	//½«Êı¾İ´ÓÄÚºË¸´ÖÆµ½ÓÃ»§¿Õ¼ä 
+	//å°†æ•°æ®ä»å†…æ ¸å¤åˆ¶åˆ°ç”¨æˆ·ç©ºé—´ 
 	ret = copy_to_user(user, &rules, sizeof(rules));
 	if (ret != 0)
 	{
@@ -129,12 +127,12 @@ int hookSockoptGet(struct sock* sock, int cmd, void __user* user, int* len)
 
 	return ret;
 }
-//³õÊ¼»¯Ä£¿é 
+//åˆå§‹åŒ–æ¨¡å— 
 int init_module()
 {
-	rules.ping_status = 0;   //³õÊ¼»¯ping×´Ì¬£¬ÉèÖÃÎª0²»·â½û 
-	rules.ip_status = 0;     //³õÊ¼»¯ip×´Ì¬£¬ÉèÖÃÎª0²»·â½û 
-	rules.port_status = 0;   //³õÊ¼»¯¶Ë¿Ú×´Ì¬£¬ÉèÖÃÎª0²»·â½û 
+	rules.ping_status = 0;   //åˆå§‹åŒ–pingçŠ¶æ€ï¼Œè®¾ç½®ä¸º0ä¸å°ç¦ 
+	rules.ip_status = 0;     //åˆå§‹åŒ–ipçŠ¶æ€ï¼Œè®¾ç½®ä¸º0ä¸å°ç¦ 
+	rules.port_status = 0;   //åˆå§‹åŒ–ç«¯å£çŠ¶æ€ï¼Œè®¾ç½®ä¸º0ä¸å°ç¦ 
 
 	nfhoLocalIn.hook = hookLocalIn;         
 	nfhoLocalIn.pf = PF_INET;
@@ -162,8 +160,8 @@ int init_module()
 	nf_register_net_hook(&init_net, &nfhoPostRouting);
 
 	nfhoSockopt.pf = PF_INET;
-	nfhoSockopt.set_optmin = SOE_MIN;  //Ö¸¶¨×îĞ¡Öµ 
-	nfhoSockopt.set_optmax = SOE_MAX;  //Ö¸¶¨×î´óÖµ 
+	nfhoSockopt.set_optmin = SOE_MIN;  //æŒ‡å®šæœ€å°å€¼ 
+	nfhoSockopt.set_optmax = SOE_MAX;  //æŒ‡å®šæœ€å¤§å€¼ 
 	nfhoSockopt.set = hookSockoptSet;
 	nfhoSockopt.get_optmin = SOE_MIN;
 	nfhoSockopt.get_optmax = SOE_MAX;
@@ -176,16 +174,16 @@ int init_module()
 	return 0;
 }
 
-//ÇåÀíÄ£¿é 
+//æ¸…ç†æ¨¡å— 
 void cleanup_module()
 {
-	//×¢Ïú¹³×Ó 
+	//æ³¨é”€é’©å­ 
 	nf_unregister_net_hook(&init_net, &nfhoLocalIn);
 	nf_unregister_net_hook(&init_net, &nfhoLocalOut);
 	nf_unregister_net_hook(&init_net, &nfhoPreRouting);
 	nf_unregister_net_hook(&init_net, &nfhoForwarding);
 	nf_unregister_net_hook(&init_net, &nfhoPostRouting);
-	//×¢ÏúÀ©Õ¹Ì×½Ó×Ö 
+	//æ³¨é”€æ‰©å±•å¥—æ¥å­— 
 	nf_unregister_sockopt(&nfhoSockopt);
 
 	printk("My nf unregister\n");
